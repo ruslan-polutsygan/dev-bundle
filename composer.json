@@ -1,0 +1,28 @@
+{
+    "name":         "ruslan-polutsygan/dev-bundle",
+    "description":  "Makes development easier",
+    "keywords":     ["development", "tests", "fixtures"],
+    "homepage":     "https://github.com/ruslan-polutsygan/dev-bundle",
+    "type":         "library",
+    "license":      "MIT",
+    "authors":      [
+        {
+            "name":      "Ruslan Polutsygan",
+            "email":     "ruslan.polutsygan@gmail.com"
+        }
+    ],
+    "require": {
+        "php": ">5.4",
+        "symfony/symfony": "*",
+        "doctrine/orm": "*",
+        "doctrine/dbal": "*",
+        "doctrine/doctrine-fixtures-bundle": "*",
+        "phpunit/phpunit": "*"
+
+    },
+    "autoload": {
+        "psr-4": {
+            "RP\\": "src/"
+        }
+    }
+}
