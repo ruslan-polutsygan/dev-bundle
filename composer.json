@@ -13,7 +13,7 @@
     ],
     "require": {
         "php": ">5.4",
-        "symfony/symfony": "*",
+        "symfony/symfony": ">=2.8",
         "doctrine/orm": "*",
         "doctrine/dbal": "*",
         "doctrine/doctrine-fixtures-bundle": "*",
