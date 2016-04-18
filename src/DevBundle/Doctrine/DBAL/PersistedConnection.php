@@ -6,7 +6,9 @@ use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Driver\Connection as DriverConnection;
 
 /**
- * Connection wrapper sharing the same db handle across multiple requests.
+ * @see https://gist.github.com/makasim/f1e28c9bc9458f20f38f
+ *
+ * Connection wrapper sharing the same db handle across multiple requests
  *
  * Allows multiple Connection instances to run in the same transaction
  */
@@ -36,10 +38,24 @@ class PersistedConnection extends Connection
             $this->setConnected(true);
         } else {
             parent::connect();
-            $this->persistConnection($this->_conn);
+            $this->setPersistedConnection($this->_conn);
+
+            $this->_conn->exec('SET SESSION wait_timeout=2147483');
         }
 
         return true;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function close($force = false)
+    {
+        if ($force) {
+            parent::close();
+
+            $this->unsetPersistedConnection();
+        }
     }
 
     /**
@@ -67,14 +83,24 @@ class PersistedConnection extends Connection
     }
 
     /**
+     * {@inheritDoc}
+     */
+    public function isTransactionActive()
+    {
+        $this->setTransactionNestingLevel($this->getPersistedTransactionNestingLevel());
+
+        return parent::isTransactionActive();
+    }
+
+    /**
      * @param int $level
      */
     private function setTransactionNestingLevel($level)
     {
-        $prop = new \ReflectionProperty('Doctrine\DBAL\Connection', '_transactionNestingLevel');
-        $prop->setAccessible(true);
-
-        return $prop->setValue($this, $level);
+        $rp = new \ReflectionProperty('Doctrine\DBAL\Connection', '_transactionNestingLevel');
+        $rp->setAccessible(true);
+        $rp->setValue($this, $level);
+        $rp->setAccessible(false);
     }
 
     /**
@@ -84,19 +110,17 @@ class PersistedConnection extends Connection
      */
     private function wrapTransactionNestingLevel($method)
     {
-        $e = null;
+        $exception = null;
 
         $this->setTransactionNestingLevel($this->getPersistedTransactionNestingLevel());
 
         try {
             call_user_func(array('parent', $method));
+
+            $this->setPersistedTransactionNestingLevel($this->getTransactionNestingLevel());
         } catch (\Exception $e) {
-            $var = 1;
-        }
+            $this->setPersistedTransactionNestingLevel($this->getTransactionNestingLevel());
 
-        $this->persistTransactionNestingLevel($this->getTransactionNestingLevel());
-
-        if ($e) {
             throw $e;
         }
     }
@@ -106,10 +130,10 @@ class PersistedConnection extends Connection
      */
     protected function setConnected($connected)
     {
-        $isConnected = new \ReflectionProperty('Doctrine\DBAL\Connection', '_isConnected');
-        $isConnected->setAccessible(true);
-        $isConnected->setValue($this, $connected);
-        $isConnected->setAccessible(false);
+        $rp = new \ReflectionProperty('Doctrine\DBAL\Connection', '_isConnected');
+        $rp->setAccessible(true);
+        $rp->setValue($this, $connected);
+        $rp->setAccessible(false);
     }
 
     /**
@@ -127,7 +151,7 @@ class PersistedConnection extends Connection
     /**
      * @param int $level
      */
-    protected function persistTransactionNestingLevel($level)
+    protected function setPersistedTransactionNestingLevel($level)
     {
         static::$persistedTransactionNestingLevels[$this->getConnectionId()] = $level;
     }
@@ -135,7 +159,7 @@ class PersistedConnection extends Connection
     /**
      * @param DriverConnection $connection
      */
-    protected function persistConnection(DriverConnection $connection)
+    protected function setPersistedConnection(DriverConnection $connection)
     {
         static::$persistedConnections[$this->getConnectionId()] = $connection;
     }
@@ -154,6 +178,15 @@ class PersistedConnection extends Connection
     protected function getPersistedConnection()
     {
         return static::$persistedConnections[$this->getConnectionId()];
+    }
+
+    /**
+     * @return DriverConnection
+     */
+    protected function unsetPersistedConnection()
+    {
+        unset(static::$persistedConnections[$this->getConnectionId()]);
+        unset(static::$persistedTransactionNestingLevels[$this->getConnectionId()]);
     }
 
     /**
