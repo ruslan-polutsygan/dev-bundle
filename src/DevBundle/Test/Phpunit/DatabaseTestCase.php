@@ -75,7 +75,9 @@ abstract class DatabaseTestCase extends BaseWebTestCase
     protected function refreshFixture(&$object)
     {
         $object = $this->getEntityManager()->getRepository(get_class($object))->find($object);
-        $this->getEntityManager()->refresh($object);
+        if (null != $object) {
+            $this->getEntityManager()->refresh($object);
+        }
     }
 
     protected function getContainer()
