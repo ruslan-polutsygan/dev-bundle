@@ -43,6 +43,12 @@ abstract class DatabaseTestCase extends BaseWebTestCase
         $this->rollbackTransaction();
 
         BaseWebTestCase::tearDown();
+
+        static::$client = null;
+        static::$container = null;
+        static::$kernel = null;
+        
+        $this->cleanFixtures();
     }
 
     /**
