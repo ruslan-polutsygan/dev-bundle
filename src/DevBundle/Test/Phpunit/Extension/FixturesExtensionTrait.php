@@ -15,19 +15,25 @@ trait FixturesExtensionTrait
     /**
      * @var array
      */
-    protected $referenceRepositoryData;
+    protected static $referenceRepositoryData;
 
     protected function setUpFixtures()
     {
+        $this->setReferenceRepositoryData();
+        $manager = $this->getKernel()->getContainer()->get('doctrine.orm.default_entity_manager');
+        $this->referenceRepository = new ReferenceRepository($manager);
+    }
+    
+    private function setReferenceRepositoryData()
+    {
+        if (static::$referenceRepositoryData) {
+            return;
+        }
         $referenceRepositoryPath = $this->getKernel()->getContainer()->getParameter('fixtures.reference_repository_path');
         if (false == file_exists($referenceRepositoryPath)) {
             throw new \LogicException(sprintf('Reference repository path %s is not valid', $referenceRepositoryPath));
         }
-
-        $manager = $this->getKernel()->getContainer()->get('doctrine.orm.default_entity_manager');
-
-        $this->referenceRepositoryData = unserialize(file_get_contents($referenceRepositoryPath));
-        $this->referenceRepository = new ReferenceRepository($manager);
+        static::$referenceRepositoryData = unserialize(file_get_contents($referenceRepositoryPath));
     }
 
     /**
@@ -40,17 +46,22 @@ trait FixturesExtensionTrait
         $manager = $this->getKernel()->getContainer()->get('doctrine.orm.default_entity_manager');
 
         if (!$this->referenceRepository->hasReference($name)) {
-            if (isset($this->referenceRepositoryData[$name])) {
+            if (isset(static::$referenceRepositoryData[$name])) {
                 $reference = $manager->getReference(
-                        $this->referenceRepositoryData[$name]['class'],
-                        $this->referenceRepositoryData[$name]['identifier']
-                    );
+                    static::$referenceRepositoryData[$name]['class'],
+                    static::$referenceRepositoryData[$name]['identifier']
+                );
 
                 $this->referenceRepository->setReference($name, $reference);
             }
         }
 
         return $this->referenceRepository->getReference($name);
+    }
+
+    protected function cleanFixtures()
+    {
+        $this->referenceRepository = null;
     }
 
     /**

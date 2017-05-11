@@ -34,6 +34,7 @@ class TestCase extends BaseTestCase
         $this->baseUrl = $this->container->getParameter('mink.base_url');
 
         $this->session = $this->getMink()->getSession();
+        $this->session->start();
         $this->session->maximizeWindow();
     }
 
