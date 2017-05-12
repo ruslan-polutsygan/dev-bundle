@@ -43,6 +43,12 @@ abstract class DatabaseTestCase extends BaseWebTestCase
         $this->rollbackTransaction();
 
         BaseWebTestCase::tearDown();
+
+        static::$client = null;
+        static::$container = null;
+        static::$kernel = null;
+        
+        $this->cleanFixtures();
     }
 
     /**
@@ -68,7 +74,10 @@ abstract class DatabaseTestCase extends BaseWebTestCase
 
     protected function refreshFixture(&$object)
     {
-        $object = $this->getEntityManager()->getRepository(get_class($object))->find($object->getId());
+        $object = $this->getEntityManager()->getRepository(get_class($object))->find($object);
+        if (null != $object) {
+            $this->getEntityManager()->refresh($object);
+        }
     }
 
     protected function getContainer()
